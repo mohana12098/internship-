@@ -57,34 +57,37 @@ def get_data():
     cur.execute("""
         select * from student_table
 """)
-    Data = cur.fetchone()
+    Data = cur.fetchall()
     cur.close()
     connection.close()
-    return jsonify({
-        "student_id":Data[0],
-        "student_name":Data[1],
-        "roll_number":Data[2],
-        "email":Data[3]
-    }),200
+    results =[]
+    for row in Data:
+        results.append({
+        "student_id":row[0],
+        "student_name":row[1],
+        "roll_number":row[2],
+        "email":row[3]    
+        })
+    return jsonify(results),200
 
-@app.route("/put_data", methods =['PUT'])
-def put_data():
-    #student_id=request.json['student_id']
-    #student_name = request.json['student_name']
-    #roll_number = request.json['roll_number']
-    email = request.json['email']
+@app.route("/update/<int:student_id>",methods =['PUT'])
+def update(student_id):
+    student_name= request.json['student_name']
+    roll_number= request.json['roll_number']
+    email=request.json['email']
     connection =get_db_connection()
-    cur =connection.cursor()
+    cur= connection.cursor()
     cur.execute("""
-        UPDATE student_table SET email='srinu@email.com' WHERE student_id= 12
-""")
+        UPDATE student_table SET student_name=%s,roll_number=%s,email=%s WHERE student_id=%s
+""",(student_name,roll_number,email,student_id))
     connection.commit()
     cur.close()
     connection.close()
     return jsonify({"message":"data updated successfully"}),202
 
-@app.route("/delete_data", methods =['DELETE'])
-def delete_data():
+
+@app.route("/delete/<int:student_id>", methods =['DELETE'])
+def delete(student_id):
     student_id=request.json['student_id']
     connection =get_db_connection()
     cur =connection.cursor()
