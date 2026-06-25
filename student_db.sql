@@ -11,3 +11,4 @@ insert into student(name,age,email)values('srinivas',30,'srinivas@email.com');
 update student set email = 'srinu@email.com'
 where id =2
 delete from student where id =1
+
