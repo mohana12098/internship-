@@ -25,11 +25,13 @@ def create_student_table():
     connection = get_db_connection()
     cur = connection.cursor()
     cur.execute("""
-            CREATE TABLE IF NOT EXISTS users_table(
+            CREATE TABLE IF NOT EXISTS users(
                 user_id SERIAL PRIMARY KEY,
                 username TEXT NOT NULL,
                 password TEXT NOT NULL,
-                email TEXT NOT NULL UNIQUE
+                email TEXT NOT NULL UNIQUE,
+                phone_number TEXt NOT NULL,
+                college TEXT NOT NULL
                 );
 """)
     connection.commit()
@@ -38,35 +40,39 @@ def create_student_table():
 
 create_student_table()
 
-@app.route('/signup',methods=['POST'])
-def signup():
+@app.route('/signup_user',methods=['POST'])
+def signup_user():
     username =request.json['username']
     email =request.json['email']
     password =request.json['password']
+    phone_number =request.json['phone_number']
+    college = request.json['college']
 
-    if not username or email or password:
+    if not username or not email:
         return jsonify({"error":"all fields required"}),400
     hashed_password =bcrypt.generate_password_hash(password).decode("utf-8")
     connection =get_db_connection()
     cur = connection.cursor()
     cur.execute("""
-        INSERT INTO users_table(username,email,password)VALUES(%s,%s,%s)
-""",(username,email,hashed_password))
+        INSERT INTO users(username,email,password,phone_number,college)VALUES(%s,%s,%s,%s,%s)
+""",(username,email,hashed_password,phone_number,college))
     connection.commit()
     cur.close()
     connection.close()
     return jsonify({"message":"signup successfully"})
 
-@app.route('/login',methods=['POST'])
-def login():
+@app.route('/login_user',methods=['POST'])
+def login_user():
+    username =request.json['username']
     email = request.json['email']
     password =request.json['password']
-    if not email or not password:
+    college =request.json['college']
+    if not username or not email:
         return jsonify(({"error":"all fields are required"})),400
     connection =get_db_connection()
     cur =connection.cursor()
     cur.execute("""
-          select user_id, username, password from users_table
+          select user_id, username, password from users
                 where email =%s
 """,(email,))
     user =cur.fetchone()
@@ -82,7 +88,8 @@ def login():
         "user":{
             "user_id":user_id,
             "username":username,
-            "email":email
+            "email":email,
+            "college":college
         }
     })
 
