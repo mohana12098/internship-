@@ -66,21 +66,21 @@ def login_user():
     username =request.json['username']
     email = request.json['email']
     password =request.json['password']
-    college =request.json['college']
+    #college=request.json['college']
     if not username or not email:
         return jsonify(({"error":"all fields are required"})),400
     connection =get_db_connection()
     cur =connection.cursor()
     cur.execute("""
-          select user_id, username, password from users
-                where email =%s
-""",(email,))
+          select user_id, username, password, college from users
+                where username=%s AND email =%s
+""",(username,email,))
     user =cur.fetchone()
     cur.close()
     connection.close()
     if not user:
         return jsonify({"error":"user not found"})
-    user_id, username, hashed_password=user
+    user_id, username, hashed_password, college= user
     if not bcrypt.check_password_hash(hashed_password,password):
         return jsonify({"error":"invalid password"}),401
     return jsonify({
