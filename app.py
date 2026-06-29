@@ -1,6 +1,8 @@
 from flask import Flask, request, jsonify
 import psycopg2
 from flask_bcrypt import Bcrypt
+import jwt
+import datetime
 
 app =Flask(__name__)
 
@@ -25,13 +27,11 @@ def create_student_table():
     connection = get_db_connection()
     cur = connection.cursor()
     cur.execute("""
-            CREATE TABLE IF NOT EXISTS users(
+            CREATE TABLE IF NOT EXISTS users_table(
                 user_id SERIAL PRIMARY KEY,
                 username TEXT NOT NULL,
                 password TEXT NOT NULL,
-                email TEXT NOT NULL UNIQUE,
-                phone_number TEXt NOT NULL,
-                college TEXT NOT NULL
+                email TEXT NOT NULL UNIQUE
                 );
 """)
     connection.commit()
@@ -40,56 +40,72 @@ def create_student_table():
 
 create_student_table()
 
-@app.route('/signup_user',methods=['POST'])
-def signup_user():
+SECRET_KEY ="this is my kleeey"
+
+def create_jwt(user_id, username):
+    payload ={
+        "user_id":"user_id",
+        "username":"username",
+        "exp": datetime.datetime.utcnow()+datetime.timedelta(minutes=10)
+    }
+    token =jwt.encode(payload,SECRET_KEY,algorithm="HS256")
+    return token
+
+@app.route('/signup',methods=['POST'])
+def signup():
     username =request.json['username']
     email =request.json['email']
     password =request.json['password']
-    phone_number =request.json['phone_number']
-    college = request.json['college']
 
-    if not username or not email:
+    if not username or not email or not password:
         return jsonify({"error":"all fields required"}),400
     hashed_password =bcrypt.generate_password_hash(password).decode("utf-8")
     connection =get_db_connection()
     cur = connection.cursor()
     cur.execute("""
-        INSERT INTO users(username,email,password,phone_number,college)VALUES(%s,%s,%s,%s,%s)
-""",(username,email,hashed_password,phone_number,college))
+        INSERT INTO users_table(username,email,password)VALUES(%s,%s,%s)
+                returning user_id
+""",(username,email,hashed_password))
+    user_id = cur.fetchone()[0]
     connection.commit()
     cur.close()
     connection.close()
-    return jsonify({"message":"signup successfully"})
 
-@app.route('/login_user',methods=['POST'])
-def login_user():
+    token =create_jwt(user_id,username)
+    return jsonify({"message":"signup successful",
+                    "token":token})
+
+@app.route('/login',methods=['POST'])
+def login():
     username =request.json['username']
     email = request.json['email']
     password =request.json['password']
-    #college=request.json['college']
-    if not username or not email:
+    if not username or not email or not password:
         return jsonify(({"error":"all fields are required"})),400
     connection =get_db_connection()
     cur =connection.cursor()
     cur.execute("""
-          select user_id, username, password, college from users
-                where username=%s AND email =%s
-""",(username,email,))
-    user =cur.fetchone()
+            select user_id, username, password from users_table where email=%s
+""",(email,))
+    user=cur.fetchone()
+    user_id=user[0]
+    connection.commit()
     cur.close()
     connection.close()
     if not user:
         return jsonify({"error":"user not found"})
-    user_id, username, hashed_password, college= user
+    user_id, username, hashed_password= user
     if not bcrypt.check_password_hash(hashed_password,password):
         return jsonify({"error":"invalid password"}),401
+    
+    token =create_jwt(user_id,username)
     return jsonify({
         "message":"login successful",
+        "token":token,
         "user":{
             "user_id":user_id,
             "username":username,
-            "email":email,
-            "college":college
+            "email":email
         }
     })
 
