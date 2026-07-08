@@ -234,6 +234,11 @@ def delete_todo(id):
     connection =get_db_connection()
     cur =connection.cursor()
     cur.execute("""
+        select * from To_Do
+                where id=%s and user_id=%s
+""",(id,user_data["user_id"]))
+    note =cur.fetchone()
+    cur.execute("""
         DELETE FROM To_Do where id=%s
 """,(id,))
     connection.commit()
